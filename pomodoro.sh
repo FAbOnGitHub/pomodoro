@@ -1,22 +1,54 @@
 #!/bin/bash
 
+# From https://github.com/parantapa/pomodoro
 # This is a simple script for pomodoro timer.
 # This is intended to be used with xfce4-genmon-plugin.
 
-size=24		# Icon size in pixels
-pomodoro_time=25	# Time for the pomodoro cycle (in minutes)
-short_break_time=5	# Time for the short break cycle (in minutes)
-long_break_time=15	# Time for the long break cycle (in minutes)
-cycles_between_long_breaks=4 # How many cycles should we do before long break
-notify_time=5	# Time for notification to hang (in seconds)
+# news :
+# - customize values in ${F_CFG}
 
-DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#
+# Path and files : separate code from data and config
+#
+DIR_CODE="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR_RW="${HOME}/.cache/pomodoro"
+DIR_CFG="${HOME}/.config/pomodoro"
+F_CFG="${DIR_CFG}/config.sh"
 
-savedtime="${DIR}/savedtime"
-savedmode="${DIR}/savedmode"
-savedcyclecount="${DIR}/savedcyclecount"
-lock="${DIR}/lock"
+mkdir -p "${DIR_RW}" "${DIR_CFG}"
 
+savedtime="${DIR_RW}/savedtime"
+savedmode="${DIR_RW}/savedmode"
+savedcyclecount="${DIR_RW}/savedcyclecount"
+lock="${DIR_RW}/lock"
+
+#
+#  Config : default values
+#
+# Icon size in pixels
+size=24
+# Time for the pomodoro cycle (in minutes)
+pomodoro_time=25
+# Time for the short break cycle (in minutes)
+short_break_time=5
+# Time for the long break cycle (in minutes)
+long_break_time=15
+# How many cycles should we do before long break
+cycles_between_long_breaks=4
+# Time for notification to hang (in seconds)
+notify_time=5
+# Sound to play on alert
+sound="${DIR}/cow.wav"
+#
+
+
+if [ -f "${F_CFG}" ]; then
+    source "${F_CFG}"
+fi
+
+#
+#  Boot
+#
 pomodoro_cycle=$(( pomodoro_time * 60 ))
 short_break_cycle=$(( short_break_time * 60 ))
 long_break_cycle=$(( long_break_time * 60 ))
@@ -27,8 +59,11 @@ endmsg_shortbreak="Pomodoro ended, stop the work and take short break"
 endmsg_longbreak="Pomodoro ended, stop the work and take long break"
 killmsg="Pomodoro stopped, restart when you are ready"
 
+
+
+
 function xnotify () {
-    notify-send -t ${notify_time} -i "${DIR}/icons/running.png" "${summary}" "$1"
+    notify-send -t ${notify_time} -i "${DIR_CODE}/icons/running.png" "${summary}" "$1"
 }
 
 function terminate_pomodoro () {
@@ -57,12 +92,15 @@ function render_status () {
     # but user can intuitively and immidiatelly notice the difference,
     # because if it is break remaining time is displayed.
     remaining_time_display=$(printf "%02d:%02d" $(( remaining_time / 60 )) $(( remaining_time % 60 )))
-    echo "<click>${DIR}/pomodoro.sh -n</click>"
+    echo "<click>${DIR_CODE}/pomodoro.sh -n</click>"
     echo "<txt>${remaining_time_display}</txt>"
-    echo "<img>${DIR}/icons/${display_icon}${size}.png</img>"
+    echo "<img>${DIR_CODE}/icons/${display_icon}${size}.png</img>"
     echo "<tool>${display_mode}: You have ${remaining_time_display} min left [#${saved_cycle_count}]</tool>"
 }
 
+#
+#  Main
+#
 ( flock -x 200
 
 
@@ -87,8 +125,8 @@ function render_status () {
       # periodic check, and redrawing
 
       if [ "${mode}" == "idle" ] ; then
-	  echo "<click>${DIR}/pomodoro.sh -n</click>"
-	  echo "<img>${DIR}/icons/stopped${size}.png</img>"
+	  echo "<click>${DIR_CODE}/pomodoro.sh -n</click>"
+	  echo "<img>${DIR_CODE}/icons/stopped${size}.png</img>"
 	  echo "<tool>No Pomodoro Running</tool>"
 
       else
@@ -150,7 +188,7 @@ function render_status () {
 
 	      fi
 
-	      aplay "${DIR}/cow.wav"
+	      aplay "${sound}"
 	      xnotify "${msg}"
 	      zenity --info --text="${msg}"
 	      echo "${current_time}" > "${savedtime}"
